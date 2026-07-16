@@ -21,7 +21,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Current plugin version.
  */
-define( 'ZTP_VERSION', '1.0.1' );
+define( 'ZTP_VERSION', '1.0.2' );
 
 /**
  * Plugin root file.

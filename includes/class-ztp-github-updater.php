@@ -1,6 +1,9 @@
 <?php
 /**
- * GitHub release updater for native WordPress update + auto-update toggles.
+ * GitHub release updater — shows WP "update now" banner like Hostinger Tools.
+ *
+ * Requires a published GitHub Release whose tag is higher than ZTP_VERSION
+ * (example: installed 1.0.1 → release tag v1.0.2).
  *
  * @package Zouetech_Portfolio
  * @since   1.0.1
@@ -38,6 +41,7 @@ class Zouetech_Portfolio_GitHub_Updater {
 
 		add_filter( 'pre_set_site_transient_update_plugins', array( $this, 'check_for_update' ) );
 		add_filter( 'plugins_api', array( $this, 'plugin_information' ), 10, 3 );
+		add_filter( 'upgrader_source_selection', array( $this, 'fix_source_folder' ), 10, 4 );
 	}
 
 	/**
@@ -48,8 +52,13 @@ class Zouetech_Portfolio_GitHub_Updater {
 	 * @return object
 	 */
 	public function check_for_update( $transient ) {
-		if ( ! is_object( $transient ) || empty( $transient->checked ) ) {
+		if ( ! is_object( $transient ) ) {
 			return $transient;
+		}
+
+		// Allow banner even when WP has not filled ->checked yet.
+		if ( empty( $transient->checked ) ) {
+			$transient->checked = array();
 		}
 
 		$basename = plugin_basename( $this->plugin_file );
@@ -61,12 +70,17 @@ class Zouetech_Portfolio_GitHub_Updater {
 
 		if ( version_compare( ZTP_VERSION, $release['version'], '<' ) ) {
 			$transient->response[ $basename ] = (object) array(
+				'id'          => $basename,
 				'slug'        => dirname( $basename ),
 				'plugin'      => $basename,
 				'new_version' => $release['version'],
 				'url'         => 'https://github.com/' . $this->repository,
 				'package'     => $release['package'],
+				'icons'       => array(),
+				'banners'     => array(),
+				'banners_rtl' => array(),
 				'tested'      => get_bloginfo( 'version' ),
+				'requires'    => '6.0',
 			);
 		} else {
 			$transient->no_update[ $basename ] = (object) array(
@@ -114,9 +128,50 @@ class Zouetech_Portfolio_GitHub_Updater {
 			'download_link' => $release['package'],
 			'sections'      => array(
 				'description' => __( 'Portfolio projects, Elementor Dynamic Tags, and a Featured Portfolio Showcase widget with multiple card styles.', 'zouetech-portfolio' ),
-				'changelog'   => ! empty( $release['notes'] ) ? wp_kses_post( $release['notes'] ) : '',
+				'changelog'   => ! empty( $release['notes'] ) ? wp_kses_post( nl2br( $release['notes'] ) ) : '',
 			),
 		);
+	}
+
+	/**
+	 * Rename GitHub zipball folder to the installed plugin folder name.
+	 *
+	 * GitHub zip extracts as owner-repo-hash; WP expects zouetech-portfolio/.
+	 *
+	 * @since 1.0.2
+	 * @param string      $source        Extracted source path.
+	 * @param string      $remote_source Remote source.
+	 * @param WP_Upgrader $upgrader      Upgrader instance.
+	 * @param array       $hook_extra    Extra data.
+	 * @return string|WP_Error
+	 */
+	public function fix_source_folder( $source, $remote_source, $upgrader, $hook_extra ) {
+		global $wp_filesystem;
+
+		if ( empty( $hook_extra['plugin'] ) || plugin_basename( $this->plugin_file ) !== $hook_extra['plugin'] ) {
+			return $source;
+		}
+
+		$desired = trailingslashit( $remote_source ) . dirname( plugin_basename( $this->plugin_file ) );
+		$source  = untrailingslashit( $source );
+
+		if ( trailingslashit( $source ) === trailingslashit( $desired ) ) {
+			return trailingslashit( $source );
+		}
+
+		if ( $wp_filesystem->is_dir( $desired ) ) {
+			$wp_filesystem->delete( $desired, true );
+		}
+
+		$moved = $wp_filesystem->move( $source, $desired );
+		if ( ! $moved ) {
+			return new WP_Error(
+				'ztp_rename_failed',
+				__( 'Could not rename the GitHub update package folder.', 'zouetech-portfolio' )
+			);
+		}
+
+		return trailingslashit( $desired );
 	}
 
 	/**
@@ -129,8 +184,8 @@ class Zouetech_Portfolio_GitHub_Updater {
 		$cache_key = 'ztp_github_release_' . md5( $this->repository );
 		$cached    = get_transient( $cache_key );
 
-		if ( is_array( $cached ) ) {
-			return $cached;
+		if ( false !== $cached ) {
+			return ( is_array( $cached ) && ! empty( $cached['version'] ) ) ? $cached : false;
 		}
 
 		$response = wp_remote_get(
@@ -145,27 +200,39 @@ class Zouetech_Portfolio_GitHub_Updater {
 		);
 
 		if ( is_wp_error( $response ) || 200 !== (int) wp_remote_retrieve_response_code( $response ) ) {
-			set_transient( $cache_key, array(), HOUR_IN_SECONDS );
+			set_transient( $cache_key, array(), 15 * MINUTE_IN_SECONDS );
 			return false;
 		}
 
 		$body = json_decode( wp_remote_retrieve_body( $response ), true );
 		if ( ! is_array( $body ) || empty( $body['tag_name'] ) ) {
-			set_transient( $cache_key, array(), HOUR_IN_SECONDS );
+			set_transient( $cache_key, array(), 15 * MINUTE_IN_SECONDS );
 			return false;
 		}
 
 		$version = ltrim( (string) $body['tag_name'], 'vV' );
 		$package = '';
 
-		if ( ! empty( $body['zipball_url'] ) ) {
+		// Prefer attached ZIP asset (best). Fallback to zipball.
+		if ( ! empty( $body['assets'] ) && is_array( $body['assets'] ) ) {
+			foreach ( $body['assets'] as $asset ) {
+				if ( empty( $asset['browser_download_url'] ) ) {
+					continue;
+				}
+				$name = isset( $asset['name'] ) ? (string) $asset['name'] : '';
+				if ( preg_match( '/\.zip$/i', $name ) ) {
+					$package = (string) $asset['browser_download_url'];
+					break;
+				}
+			}
+		}
+
+		if ( ! $package && ! empty( $body['zipball_url'] ) ) {
 			$package = (string) $body['zipball_url'];
-		} elseif ( ! empty( $body['assets'][0]['browser_download_url'] ) ) {
-			$package = (string) $body['assets'][0]['browser_download_url'];
 		}
 
 		if ( ! $package ) {
-			set_transient( $cache_key, array(), HOUR_IN_SECONDS );
+			set_transient( $cache_key, array(), 15 * MINUTE_IN_SECONDS );
 			return false;
 		}
 
@@ -175,7 +242,7 @@ class Zouetech_Portfolio_GitHub_Updater {
 			'notes'   => isset( $body['body'] ) ? (string) $body['body'] : '',
 		);
 
-		set_transient( $cache_key, $release, 12 * HOUR_IN_SECONDS );
+		set_transient( $cache_key, $release, 6 * HOUR_IN_SECONDS );
 
 		return $release;
 	}
