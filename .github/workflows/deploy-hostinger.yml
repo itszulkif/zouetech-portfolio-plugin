@@ -1,0 +1,41 @@
+# Deploy plugin to Hostinger on every push to main.
+# This is the reliable "git push → live site updates" path.
+#
+# Setup (one time):
+# 1. GitHub repo → Settings → Secrets and variables → Actions
+# 2. Add secrets:
+#    - FTP_SERVER   (e.g. ftp.yourdomain.com or Hostinger FTP host)
+#    - FTP_USERNAME
+#    - FTP_PASSWORD
+#    - FTP_SERVER_DIR  (e.g. /public_html/wp-content/plugins/zouetech-portfolio/)
+# 3. Push to main — files upload automatically.
+
+name: Deploy Plugin to Hostinger
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Deploy via FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          server-dir: ${{ secrets.FTP_SERVER_DIR }}
+          local-dir: ./
+          dangerous-clean-slate: false
+          exclude: |
+            **/.git*
+            **/.git*/**
+            **/.github/**
+            **/node_modules/**
+            **/.DS_Store

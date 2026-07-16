@@ -1,11 +1,9 @@
 <?php
 /**
- * GitHub auto-updater — installs new Releases automatically (no manual click).
+ * GitHub branch auto-updater.
  *
- * Flow:
- * 1. Publish a GitHub Release with a higher tag (e.g. v1.0.3).
- * 2. Cron checks GitHub regularly.
- * 3. Plugin auto-updates itself when a newer release is found.
+ * Watches the `main` branch. Any new push (new commit SHA) can auto-install.
+ * No GitHub Release required. Manual "update now" is not needed.
  *
  * @package Zouetech_Portfolio
  * @since   1.0.1
@@ -19,185 +17,210 @@ defined( 'ABSPATH' ) || exit;
 class Zouetech_Portfolio_GitHub_Updater {
 
 	/**
-	 * Cron hook name.
+	 * Cron hook.
 	 *
 	 * @var string
 	 */
 	const CRON_HOOK = 'ztp_check_github_updates';
 
 	/**
-	 * Main plugin file path.
+	 * Option: last installed commit SHA.
+	 *
+	 * @var string
+	 */
+	const SHA_OPTION = 'ztp_github_installed_sha';
+
+	/**
+	 * Main plugin file.
 	 *
 	 * @var string
 	 */
 	private $plugin_file;
 
 	/**
-	 * GitHub repository slug (owner/repo).
+	 * owner/repo.
 	 *
 	 * @var string
 	 */
 	private $repository;
 
 	/**
-	 * @since 1.0.1
-	 * @param string $plugin_file Main plugin file.
+	 * Branch name.
+	 *
+	 * @var string
+	 */
+	private $branch = 'main';
+
+	/**
+	 * @param string $plugin_file Plugin main file.
 	 * @param string $repository  GitHub repo slug.
 	 */
 	public function __construct( $plugin_file, $repository ) {
 		$this->plugin_file = $plugin_file;
 		$this->repository  = $repository;
 
+		add_filter( 'cron_schedules', array( $this, 'add_cron_schedule' ) );
 		add_filter( 'pre_set_site_transient_update_plugins', array( $this, 'check_for_update' ) );
 		add_filter( 'plugins_api', array( $this, 'plugin_information' ), 10, 3 );
 		add_filter( 'upgrader_source_selection', array( $this, 'fix_source_folder' ), 10, 4 );
-
-		// Always auto-update this plugin — no manual "update now" required.
 		add_filter( 'auto_update_plugin', array( $this, 'force_auto_update' ), 10, 2 );
 		add_filter( 'plugin_auto_update_setting_html', array( $this, 'auto_update_label' ), 10, 2 );
-
+		add_action( 'upgrader_process_complete', array( $this, 'after_upgrade' ), 10, 2 );
 		add_action( self::CRON_HOOK, array( $this, 'cron_auto_update' ) );
-		add_action( 'init', array( $this, 'ensure_cron_scheduled' ) );
+		add_action( 'init', array( $this, 'ensure_cron_scheduled' ), 20 );
+
+		// Faster check when visiting wp-admin.
+		if ( is_admin() ) {
+			add_action( 'admin_init', array( $this, 'maybe_admin_check' ), 30 );
+		}
 	}
 
 	/**
-	 * Schedule hourly GitHub checks.
+	 * Custom 15-minute schedule.
 	 *
-	 * @since 1.0.3
+	 * @param array<string, array<string, mixed>> $schedules Schedules.
+	 * @return array<string, array<string, mixed>>
+	 */
+	public function add_cron_schedule( $schedules ) {
+		$schedules['ztp_fifteen_minutes'] = array(
+			'interval' => 15 * MINUTE_IN_SECONDS,
+			'display'  => __( 'Every 15 Minutes (Zouetech Portfolio)', 'zouetech-portfolio' ),
+		);
+		return $schedules;
+	}
+
+	/**
+	 * Ensure cron is scheduled.
+	 *
 	 * @return void
 	 */
 	public function ensure_cron_scheduled() {
 		if ( ! wp_next_scheduled( self::CRON_HOOK ) ) {
-			wp_schedule_event( time() + 60, 'hourly', self::CRON_HOOK );
+			wp_schedule_event( time() + 120, 'ztp_fifteen_minutes', self::CRON_HOOK );
 		}
 	}
 
 	/**
-	 * Clear cron on deactivation.
+	 * Clear cron.
 	 *
-	 * @since 1.0.3
 	 * @return void
 	 */
 	public static function clear_cron() {
-		$timestamp = wp_next_scheduled( self::CRON_HOOK );
-		if ( $timestamp ) {
-			wp_unschedule_event( $timestamp, self::CRON_HOOK );
-		}
 		wp_clear_scheduled_hook( self::CRON_HOOK );
 	}
 
 	/**
-	 * Force WordPress to auto-update this plugin only.
+	 * Force auto-update for this plugin.
 	 *
-	 * @since 1.0.3
-	 * @param bool|null $update Whether to update.
-	 * @param object    $item   Update item.
+	 * @param bool|null $update Update decision.
+	 * @param object    $item   Item.
 	 * @return bool|null
 	 */
 	public function force_auto_update( $update, $item ) {
 		$basename = plugin_basename( $this->plugin_file );
-
 		if ( ! empty( $item->plugin ) && $basename === $item->plugin ) {
 			return true;
 		}
-
 		if ( ! empty( $item->slug ) && dirname( $basename ) === $item->slug ) {
 			return true;
 		}
-
 		return $update;
 	}
 
 	/**
-	 * Show locked auto-update status (manual toggle removed).
+	 * Locked auto-update label.
 	 *
-	 * @since 1.0.3
 	 * @param string $html        HTML.
-	 * @param string $plugin_file Plugin file.
+	 * @param string $plugin_file File.
 	 * @return string
 	 */
 	public function auto_update_label( $html, $plugin_file ) {
 		if ( plugin_basename( $this->plugin_file ) !== $plugin_file ) {
 			return $html;
 		}
-
-		return esc_html__( 'Auto-updates enabled (GitHub Releases)', 'zouetech-portfolio' );
+		return esc_html__( 'Auto-updates from GitHub (main branch)', 'zouetech-portfolio' );
 	}
 
 	/**
-	 * Cron: refresh GitHub data and auto-install if newer.
+	 * Occasional admin-side refresh (max once / 10 min).
 	 *
-	 * @since 1.0.3
+	 * @return void
+	 */
+	public function maybe_admin_check() {
+		if ( get_transient( 'ztp_admin_update_checked' ) ) {
+			return;
+		}
+		set_transient( 'ztp_admin_update_checked', 1, 10 * MINUTE_IN_SECONDS );
+		$this->cron_auto_update();
+	}
+
+	/**
+	 * Cron worker: detect new GitHub commit and upgrade.
+	 *
 	 * @return void
 	 */
 	public function cron_auto_update() {
-		$release = $this->get_latest_release( true );
-		if ( ! $release || empty( $release['version'] ) || empty( $release['package'] ) ) {
+		$remote = $this->get_remote_info( true );
+		if ( ! $remote ) {
 			return;
 		}
 
-		if ( version_compare( ZTP_VERSION, $release['version'], '>=' ) ) {
+		if ( ! $this->is_update_available( $remote ) ) {
 			return;
 		}
 
-		// Refresh WP update transient so auto-updater sees our package.
 		delete_site_transient( 'update_plugins' );
 		wp_update_plugins();
 
 		if ( ! function_exists( 'get_plugins' ) ) {
 			require_once ABSPATH . 'wp-admin/includes/plugin.php';
 		}
-		if ( ! class_exists( 'Plugin_Upgrader' ) ) {
-			require_once ABSPATH . 'wp-admin/includes/file.php';
-			require_once ABSPATH . 'wp-admin/includes/misc.php';
-			require_once ABSPATH . 'wp-admin/includes/class-wp-upgrader.php';
-		}
+		require_once ABSPATH . 'wp-admin/includes/file.php';
+		require_once ABSPATH . 'wp-admin/includes/misc.php';
+		require_once ABSPATH . 'wp-admin/includes/class-wp-upgrader.php';
 
 		$basename = plugin_basename( $this->plugin_file );
 		$skin     = new Automatic_Upgrader_Skin();
 		$upgrader = new Plugin_Upgrader( $skin );
+		$result   = $upgrader->upgrade( $basename );
 
-		// Quiet upgrade from the GitHub package URL.
-		$upgrader->upgrade( $basename );
+		if ( ! is_wp_error( $result ) && $result ) {
+			update_option( self::SHA_OPTION, $remote['sha'], false );
+		}
 	}
 
 	/**
-	 * Push update data into the plugins update transient.
+	 * Inject update into WP transient.
 	 *
-	 * @since 1.0.1
-	 * @param object $transient Update transient.
+	 * @param object $transient Transient.
 	 * @return object
 	 */
 	public function check_for_update( $transient ) {
 		if ( ! is_object( $transient ) ) {
 			return $transient;
 		}
-
 		if ( empty( $transient->checked ) ) {
 			$transient->checked = array();
 		}
 
 		$basename = plugin_basename( $this->plugin_file );
-		$release  = $this->get_latest_release();
+		$remote   = $this->get_remote_info();
 
-		if ( ! $release || empty( $release['version'] ) || empty( $release['package'] ) ) {
+		if ( ! $remote || empty( $remote['package'] ) ) {
 			return $transient;
 		}
 
-		if ( version_compare( ZTP_VERSION, $release['version'], '<' ) ) {
+		if ( $this->is_update_available( $remote ) ) {
 			$transient->response[ $basename ] = (object) array(
-				'id'            => $basename,
-				'slug'          => dirname( $basename ),
-				'plugin'        => $basename,
-				'new_version'   => $release['version'],
-				'url'           => 'https://github.com/' . $this->repository,
-				'package'       => $release['package'],
-				'icons'         => array(),
-				'banners'       => array(),
-				'banners_rtl'   => array(),
-				'tested'        => get_bloginfo( 'version' ),
-				'requires'      => '6.0',
-				'auto_update'   => true,
+				'id'          => $basename,
+				'slug'        => dirname( $basename ),
+				'plugin'      => $basename,
+				'new_version' => $remote['new_version'],
+				'url'         => 'https://github.com/' . $this->repository,
+				'package'     => $remote['package'],
+				'tested'      => get_bloginfo( 'version' ),
+				'requires'    => '6.0',
+				'auto_update' => true,
 			);
 		} else {
 			$transient->no_update[ $basename ] = (object) array(
@@ -205,7 +228,7 @@ class Zouetech_Portfolio_GitHub_Updater {
 				'plugin'      => $basename,
 				'new_version' => ZTP_VERSION,
 				'url'         => 'https://github.com/' . $this->repository,
-				'package'     => $release['package'],
+				'package'     => $remote['package'],
 			);
 		}
 
@@ -213,51 +236,46 @@ class Zouetech_Portfolio_GitHub_Updater {
 	}
 
 	/**
-	 * Provide plugin details on the update screen.
+	 * Plugin info modal.
 	 *
-	 * @since 1.0.1
-	 * @param false|object|array $result Plugin info result.
-	 * @param string             $action API action.
-	 * @param object             $args   API args.
-	 * @return false|object
+	 * @param mixed  $result Result.
+	 * @param string $action Action.
+	 * @param object $args   Args.
+	 * @return mixed
 	 */
 	public function plugin_information( $result, $action, $args ) {
 		if ( 'plugin_information' !== $action || empty( $args->slug ) ) {
 			return $result;
 		}
-
-		$slug = dirname( plugin_basename( $this->plugin_file ) );
-		if ( $args->slug !== $slug ) {
+		if ( $args->slug !== dirname( plugin_basename( $this->plugin_file ) ) ) {
 			return $result;
 		}
 
-		$release = $this->get_latest_release();
-		if ( ! $release ) {
+		$remote = $this->get_remote_info();
+		if ( ! $remote ) {
 			return $result;
 		}
 
 		return (object) array(
 			'name'          => 'Zouetech Portfolio',
-			'slug'          => $slug,
-			'version'       => $release['version'],
+			'slug'          => dirname( plugin_basename( $this->plugin_file ) ),
+			'version'       => $remote['new_version'],
 			'author'        => '<a href="https://zouetech.com/">Zouetech</a>',
-			'homepage'      => 'https://zouetech.com/',
-			'download_link' => $release['package'],
+			'homepage'      => 'https://github.com/' . $this->repository,
+			'download_link' => $remote['package'],
 			'sections'      => array(
-				'description' => __( 'Portfolio projects, Elementor Dynamic Tags, and a Featured Portfolio Showcase widget with multiple card styles.', 'zouetech-portfolio' ),
-				'changelog'   => ! empty( $release['notes'] ) ? wp_kses_post( nl2br( $release['notes'] ) ) : '',
+				'description' => __( 'Auto-updates from the GitHub main branch when you push.', 'zouetech-portfolio' ),
 			),
 		);
 	}
 
 	/**
-	 * Rename GitHub zipball folder to the installed plugin folder name.
+	 * Rename extracted GitHub folder to plugin folder name.
 	 *
-	 * @since 1.0.2
-	 * @param string      $source        Extracted source path.
-	 * @param string      $remote_source Remote source.
-	 * @param WP_Upgrader $upgrader      Upgrader instance.
-	 * @param array       $hook_extra    Extra data.
+	 * @param string      $source        Source.
+	 * @param string      $remote_source Remote.
+	 * @param WP_Upgrader $upgrader      Upgrader.
+	 * @param array       $hook_extra    Extra.
 	 * @return string|WP_Error
 	 */
 	public function fix_source_folder( $source, $remote_source, $upgrader, $hook_extra ) {
@@ -274,96 +292,177 @@ class Zouetech_Portfolio_GitHub_Updater {
 			return trailingslashit( $source );
 		}
 
+		// Sometimes GitHub zip nests one extra directory.
+		$files = array_values( array_filter( (array) scandir( $source ), static function ( $f ) {
+			return '.' !== $f && '..' !== $f;
+		} ) );
+
+		$actual = $source;
+		if ( 1 === count( $files ) && is_dir( $source . '/' . $files[0] ) ) {
+			$maybe = $source . '/' . $files[0];
+			if ( file_exists( $maybe . '/zouetech-portfolio.php' ) || file_exists( $maybe . '/' . basename( $this->plugin_file ) ) ) {
+				$actual = $maybe;
+			} elseif ( ! file_exists( $source . '/zouetech-portfolio.php' ) ) {
+				$actual = $maybe;
+			}
+		}
+
 		if ( $wp_filesystem->is_dir( $desired ) ) {
 			$wp_filesystem->delete( $desired, true );
 		}
 
-		$moved = $wp_filesystem->move( $source, $desired );
-		if ( ! $moved ) {
-			return new WP_Error(
-				'ztp_rename_failed',
-				__( 'Could not rename the GitHub update package folder.', 'zouetech-portfolio' )
-			);
+		if ( ! $wp_filesystem->move( $actual, $desired ) ) {
+			return new WP_Error( 'ztp_rename_failed', __( 'Could not rename GitHub package folder.', 'zouetech-portfolio' ) );
 		}
 
 		return trailingslashit( $desired );
 	}
 
 	/**
-	 * Fetch and cache the latest GitHub release.
+	 * Remember installed SHA after upgrade.
 	 *
-	 * @since 1.0.1
+	 * @param WP_Upgrader $upgrader Upgrader.
+	 * @param array       $options  Options.
+	 * @return void
+	 */
+	public function after_upgrade( $upgrader, $options ) {
+		if ( empty( $options['action'] ) || 'update' !== $options['action'] || empty( $options['type'] ) || 'plugin' !== $options['type'] ) {
+			return;
+		}
+
+		$basename = plugin_basename( $this->plugin_file );
+		$plugins  = array();
+		if ( ! empty( $options['plugins'] ) && is_array( $options['plugins'] ) ) {
+			$plugins = $options['plugins'];
+		} elseif ( ! empty( $options['plugin'] ) ) {
+			$plugins = array( $options['plugin'] );
+		}
+
+		if ( ! in_array( $basename, $plugins, true ) ) {
+			return;
+		}
+
+		$remote = $this->get_remote_info( true );
+		if ( $remote && ! empty( $remote['sha'] ) ) {
+			update_option( self::SHA_OPTION, $remote['sha'], false );
+		}
+	}
+
+	/**
+	 * Whether remote commit should be installed.
+	 *
+	 * @param array<string, string> $remote Remote info.
+	 * @return bool
+	 */
+	private function is_update_available( array $remote ) {
+		if ( empty( $remote['sha'] ) || empty( $remote['package'] ) ) {
+			return false;
+		}
+
+		$installed_sha = (string) get_option( self::SHA_OPTION, '' );
+
+		// New commit on main → update.
+		if ( $installed_sha && hash_equals( $installed_sha, $remote['sha'] ) ) {
+			return false;
+		}
+
+		// First run after installing this updater: if SHA unknown but version newer, update.
+		if ( ! $installed_sha && version_compare( ZTP_VERSION, $remote['version'], '>=' ) ) {
+			// Same version, never recorded SHA — record current and skip once.
+			update_option( self::SHA_OPTION, $remote['sha'], false );
+			return false;
+		}
+
+		if ( ! $installed_sha && version_compare( ZTP_VERSION, $remote['version'], '<' ) ) {
+			return true;
+		}
+
+		// Different SHA than last installed → update.
+		return ( ! $installed_sha || ! hash_equals( $installed_sha, $remote['sha'] ) );
+	}
+
+	/**
+	 * Fetch remote version + commit from GitHub main.
+	 *
 	 * @param bool $force Bypass cache.
 	 * @return array<string, string>|false
 	 */
-	private function get_latest_release( $force = false ) {
-		$cache_key = 'ztp_github_release_' . md5( $this->repository );
+	private function get_remote_info( $force = false ) {
+		$cache_key = 'ztp_github_branch_' . md5( $this->repository . $this->branch );
 
 		if ( ! $force ) {
 			$cached = get_transient( $cache_key );
-			if ( false !== $cached ) {
-				return ( is_array( $cached ) && ! empty( $cached['version'] ) ) ? $cached : false;
+			if ( is_array( $cached ) && ! empty( $cached['sha'] ) ) {
+				return $cached;
 			}
 		} else {
 			delete_transient( $cache_key );
 		}
 
-		$response = wp_remote_get(
-			'https://api.github.com/repos/' . $this->repository . '/releases/latest',
+		$headers = array(
+			'Accept'     => 'application/vnd.github+json',
+			'User-Agent' => 'Zouetech-Portfolio-Updater',
+		);
+
+		// Latest commit on main.
+		$commit_res = wp_remote_get(
+			'https://api.github.com/repos/' . $this->repository . '/commits/' . rawurlencode( $this->branch ),
 			array(
 				'timeout' => 20,
-				'headers' => array(
-					'Accept'     => 'application/vnd.github+json',
-					'User-Agent' => 'Zouetech-Portfolio-Updater',
-				),
+				'headers' => $headers,
 			)
 		);
 
-		if ( is_wp_error( $response ) || 200 !== (int) wp_remote_retrieve_response_code( $response ) ) {
-			set_transient( $cache_key, array(), 15 * MINUTE_IN_SECONDS );
+		if ( is_wp_error( $commit_res ) || 200 !== (int) wp_remote_retrieve_response_code( $commit_res ) ) {
+			set_transient( $cache_key, array(), 10 * MINUTE_IN_SECONDS );
 			return false;
 		}
 
-		$body = json_decode( wp_remote_retrieve_body( $response ), true );
-		if ( ! is_array( $body ) || empty( $body['tag_name'] ) ) {
-			set_transient( $cache_key, array(), 15 * MINUTE_IN_SECONDS );
+		$commit = json_decode( wp_remote_retrieve_body( $commit_res ), true );
+		$sha    = isset( $commit['sha'] ) ? (string) $commit['sha'] : '';
+		if ( ! $sha ) {
+			set_transient( $cache_key, array(), 10 * MINUTE_IN_SECONDS );
 			return false;
 		}
 
-		$version = ltrim( (string) $body['tag_name'], 'vV' );
-		$package = '';
+		// Remote plugin header Version.
+		$raw_res = wp_remote_get(
+			'https://raw.githubusercontent.com/' . $this->repository . '/' . rawurlencode( $this->branch ) . '/zouetech-portfolio.php',
+			array(
+				'timeout' => 20,
+				'headers' => array( 'User-Agent' => 'Zouetech-Portfolio-Updater' ),
+			)
+		);
 
-		if ( ! empty( $body['assets'] ) && is_array( $body['assets'] ) ) {
-			foreach ( $body['assets'] as $asset ) {
-				if ( empty( $asset['browser_download_url'] ) ) {
-					continue;
-				}
-				$name = isset( $asset['name'] ) ? (string) $asset['name'] : '';
-				if ( preg_match( '/\.zip$/i', $name ) ) {
-					$package = (string) $asset['browser_download_url'];
-					break;
-				}
+		$version = ZTP_VERSION;
+		if ( ! is_wp_error( $raw_res ) && 200 === (int) wp_remote_retrieve_response_code( $raw_res ) ) {
+			$body = (string) wp_remote_retrieve_body( $raw_res );
+			if ( preg_match( '/^\s*\*\s*Version:\s*(.+)$/mi', $body, $m ) ) {
+				$version = trim( $m[1] );
 			}
 		}
 
-		if ( ! $package && ! empty( $body['zipball_url'] ) ) {
-			$package = (string) $body['zipball_url'];
+		$installed_sha = (string) get_option( self::SHA_OPTION, '' );
+		$new_version   = $version;
+
+		// If commit changed but Version header did not, still force a newer "new_version".
+		if ( $installed_sha && ! hash_equals( $installed_sha, $sha ) && version_compare( $version, ZTP_VERSION, '<=' ) ) {
+			$new_version = ZTP_VERSION . '.' . substr( preg_replace( '/[^0-9a-f]/i', '', $sha ), 0, 8 );
+		} elseif ( version_compare( $version, ZTP_VERSION, '>' ) ) {
+			$new_version = $version;
+		} elseif ( $installed_sha && ! hash_equals( $installed_sha, $sha ) ) {
+			$new_version = $version . '.' . substr( preg_replace( '/[^0-9a-f]/i', '', $sha ), 0, 8 );
 		}
 
-		if ( ! $package ) {
-			set_transient( $cache_key, array(), 15 * MINUTE_IN_SECONDS );
-			return false;
-		}
-
-		$release = array(
-			'version' => $version,
-			'package' => $package,
-			'notes'   => isset( $body['body'] ) ? (string) $body['body'] : '',
+		$info = array(
+			'sha'         => $sha,
+			'version'     => $version,
+			'new_version' => $new_version,
+			'package'     => 'https://codeload.github.com/' . $this->repository . '/zip/refs/heads/' . rawurlencode( $this->branch ),
 		);
 
-		// Short cache so new Releases are picked up quickly.
-		set_transient( $cache_key, $release, HOUR_IN_SECONDS );
+		set_transient( $cache_key, $info, 10 * MINUTE_IN_SECONDS );
 
-		return $release;
+		return $info;
 	}
 }
