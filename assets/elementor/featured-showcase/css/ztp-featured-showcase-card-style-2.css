@@ -1,0 +1,40 @@
+/**
+ * Featured Portfolio Showcase — Card Style 2 placeholders.
+ *
+ * @package Zouetech_Portfolio
+ */
+
+.ztp-fs--card-style-2 .ztp-fs__featured {
+	align-items: center;
+}
+
+.ztp-fs--card-style-2 .ztp-fs__featured-media--card {
+	box-shadow: 0 26px 60px rgba(17, 17, 17, 0.16);
+}
+
+.ztp-fs--card-style-2 .ztp-fs__featured-content--panel {
+	padding: clamp(22px, 3vw, 36px);
+	border-radius: var(--ztp-fs-radius);
+	background: linear-gradient(180deg, #ffffff 0%, #f6f3ff 100%);
+	box-shadow: 0 18px 48px rgba(17, 17, 17, 0.08);
+}
+
+.ztp-fs--card-style-2 .ztp-fs__eyebrow {
+	font-size: 0.82rem;
+	font-weight: 700;
+	letter-spacing: 0.14em;
+	text-transform: uppercase;
+	color: #7c3aed;
+}
+
+.ztp-fs--card-style-2 .ztp-fs__cards--editorial .ztp-fs__card {
+	padding: 18px;
+	border-radius: var(--ztp-fs-radius);
+	background: #fff !important;
+	border: 1px solid rgba(17, 17, 17, 0.08);
+}
+
+.ztp-fs--card-style-2 .ztp-fs__cards--editorial .ztp-fs__card:hover {
+	transform: translateY(-4px);
+	box-shadow: 0 18px 40px rgba(17, 17, 17, 0.1) !important;
+}

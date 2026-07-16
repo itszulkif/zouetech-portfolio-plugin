@@ -1,0 +1,219 @@
+/**
+ * Zouetech Portfolio — Admin styles.
+ *
+ * @package Zouetech_Portfolio
+ */
+
+:root {
+	--ztp-border: #dcdcde;
+	--ztp-bg: #f6f7f7;
+	--ztp-card: #fff;
+	--ztp-accent: #1d2327;
+	--ztp-muted: #646970;
+	--ztp-radius: 8px;
+	--ztp-gap: 16px;
+}
+
+.ztp-admin-wrap {
+	box-sizing: border-box;
+	display: flex;
+	flex-direction: column;
+	gap: 20px;
+	margin-top: 8px;
+}
+
+.ztp-admin-wrap *,
+.ztp-admin-wrap *::before,
+.ztp-admin-wrap *::after {
+	box-sizing: border-box;
+}
+
+.ztp-card {
+	background: var(--ztp-card);
+	border: 1px solid var(--ztp-border);
+	border-radius: var(--ztp-radius);
+	overflow: hidden;
+}
+
+.ztp-card__header {
+	display: flex;
+	align-items: flex-start;
+	gap: 12px;
+	padding: 14px 16px;
+	background: var(--ztp-bg);
+	border-bottom: 1px solid var(--ztp-border);
+}
+
+.ztp-card__icon {
+	width: 28px;
+	height: 28px;
+	font-size: 22px;
+	line-height: 28px;
+	color: var(--ztp-accent);
+}
+
+.ztp-card__title {
+	margin: 0;
+	font-size: 14px;
+	font-weight: 600;
+	color: var(--ztp-accent);
+}
+
+.ztp-card__desc {
+	margin: 4px 0 0;
+	color: var(--ztp-muted);
+	font-size: 12px;
+}
+
+.ztp-card__body {
+	padding: 16px;
+}
+
+.ztp-field-grid {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: var(--ztp-gap);
+}
+
+.ztp-field--full {
+	grid-column: 1 / -1;
+}
+
+.ztp-field__label {
+	display: block;
+	margin-bottom: 6px;
+	font-weight: 600;
+	color: var(--ztp-accent);
+}
+
+.ztp-field__input {
+	width: 100%;
+	max-width: 100%;
+}
+
+.ztp-field__help {
+	margin: 6px 0 0;
+	color: var(--ztp-muted);
+	font-size: 12px;
+}
+
+.ztp-field__help--note {
+	margin-top: 12px;
+}
+
+.ztp-field__actions {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	margin: 10px 0 0;
+}
+
+.ztp-gallery-preview {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 10px;
+	min-height: 40px;
+	padding: 10px;
+	background: var(--ztp-bg);
+	border: 1px dashed var(--ztp-border);
+	border-radius: 6px;
+}
+
+.ztp-gallery-item {
+	position: relative;
+	width: 72px;
+	height: 72px;
+	border-radius: 4px;
+	overflow: hidden;
+	border: 1px solid var(--ztp-border);
+	background: #fff;
+}
+
+.ztp-gallery-item img {
+	display: block;
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+}
+
+.ztp-gallery-item__remove {
+	position: absolute;
+	top: 2px;
+	right: 2px;
+	width: 20px;
+	height: 20px;
+	border: 0;
+	border-radius: 50%;
+	background: rgba(0, 0, 0, 0.65);
+	color: #fff;
+	line-height: 1;
+	cursor: pointer;
+}
+
+.ztp-repeater__rows {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	margin-bottom: 12px;
+}
+
+.ztp-repeater__row {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 10px;
+	background: var(--ztp-bg);
+	border: 1px solid var(--ztp-border);
+	border-radius: 6px;
+}
+
+.ztp-repeater__handle {
+	color: var(--ztp-muted);
+	cursor: grab;
+}
+
+.ztp-repeater__remove {
+	font-size: 18px;
+	line-height: 1;
+	text-decoration: none;
+}
+
+.ztp-tech-icon {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 2px;
+	min-width: 64px;
+}
+
+.ztp-tech-icon__preview,
+.ztp-image-field__preview {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 48px;
+	height: 48px;
+	background: #fff;
+	border: 1px solid var(--ztp-border);
+	border-radius: 4px;
+	overflow: hidden;
+}
+
+.ztp-tech-icon__preview img,
+.ztp-image-field__preview img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+}
+
+.ztp-image-field {
+	display: flex;
+	align-items: center;
+	gap: 16px;
+}
+
+@media (max-width: 782px) {
+	.ztp-field-grid {
+		grid-template-columns: 1fr;
+	}
+}

@@ -1,0 +1,31 @@
+/**
+ * Featured Portfolio Showcase — Card Style 3 placeholders.
+ *
+ * @package Zouetech_Portfolio
+ */
+
+.ztp-fs--card-style-3 .ztp-fs__featured--reverse {
+	grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+}
+
+.ztp-fs--card-style-3 .ztp-fs__featured-content--soft {
+	padding: clamp(20px, 3vw, 34px);
+	border-radius: var(--ztp-fs-radius);
+	background: #f8fafc;
+}
+
+.ztp-fs--card-style-3 .ztp-fs__featured-media--wide {
+	min-height: 100%;
+}
+
+.ztp-fs--card-style-3 .ztp-fs__cards--soft .ztp-fs__card-media {
+	border-radius: calc(var(--ztp-fs-radius) * 1.15);
+}
+
+.ztp-fs--card-style-3 .ztp-fs__cards--soft .ztp-fs__card-category {
+	display: inline-flex;
+	width: fit-content;
+	padding: 0.3rem 0.7rem;
+	border-radius: 999px;
+	background: rgba(17, 17, 17, 0.06);
+}

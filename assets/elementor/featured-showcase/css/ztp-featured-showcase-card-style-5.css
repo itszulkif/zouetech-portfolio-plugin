@@ -1,0 +1,40 @@
+/**
+ * Featured Portfolio Showcase — Card Style 5 placeholders.
+ *
+ * @package Zouetech_Portfolio
+ */
+
+.ztp-fs--card-style-5 {
+	color: #f8fafc;
+}
+
+.ztp-fs--card-style-5 .ztp-fs__featured--dark {
+	grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+	padding: clamp(24px, 4vw, 40px);
+	border-radius: calc(var(--ztp-fs-radius) + 6px);
+	background: linear-gradient(135deg, #0f172a 0%, #111827 55%, #1e293b 100%);
+}
+
+.ztp-fs--card-style-5 .ztp-fs__featured-content--dark .ztp-fs__category,
+.ztp-fs--card-style-5 .ztp-fs__featured-content--dark .ztp-fs__excerpt,
+.ztp-fs--card-style-5 .ztp-fs__card-category {
+	color: rgba(248, 250, 252, 0.75);
+}
+
+.ztp-fs--card-style-5 .ztp-fs__featured-content--dark .ztp-fs__title,
+.ztp-fs--card-style-5 .ztp-fs__featured-content--dark .ztp-fs__title a,
+.ztp-fs--card-style-5 .ztp-fs__card-title {
+	color: #ffffff;
+}
+
+.ztp-fs--card-style-5 .ztp-fs__cards--compact .ztp-fs__card {
+	padding: 16px;
+	border-radius: var(--ztp-fs-radius);
+	background: #111827 !important;
+	border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.ztp-fs--card-style-5 .ztp-fs__nav-btn {
+	background: #ffffff;
+	color: #111827;
+}
