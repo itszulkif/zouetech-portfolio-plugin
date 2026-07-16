@@ -42,6 +42,10 @@ class Zouetech_Portfolio_Activator {
 		update_option( 'ztp_version', ZTP_VERSION );
 		update_option( 'ztp_activated_at', time() );
 
+		if ( ! wp_next_scheduled( 'ztp_check_github_updates' ) ) {
+			wp_schedule_event( time() + 120, 'hourly', 'ztp_check_github_updates' );
+		}
+
 		flush_rewrite_rules();
 	}
 }
