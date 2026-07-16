@@ -1,19 +1,11 @@
 <?php
-/**
+/*
  * Plugin Name:       Zouetech Portfolio
- * Plugin URI:        https://zouetech.com/plugins/zouetech-portfolio
- * Description:       Professional portfolio projects Custom Post Type with taxonomies, meta fields, and Elementor Dynamic Tags compatibility.
+ * Description:       A dynamic portfolio showcase plugin with multiple card styles.
  * Version:           1.0.0
- * Requires at least: 6.0
- * Requires PHP:      7.4
- * Author:            Zouetech
- * Author URI:        https://zouetech.com
- * License:           GPL-2.0-or-later
- * License URI:       https://www.gnu.org/licenses/gpl-2.0.html
- * Text Domain:       zouetech-portfolio
- * Domain Path:       /languages
- *
- * @package Zouetech_Portfolio
+ * Author:            Zouetech Team
+ * GitHub Plugin URI: itszulkif/zouetech-portfolio-plugin
+ * Primary Branch:    main
  */
 
 defined( 'ABSPATH' ) || exit;
