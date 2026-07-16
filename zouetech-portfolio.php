@@ -3,7 +3,7 @@
  * Plugin Name:       Zouetech Portfolio
  * Plugin URI:        https://zouetech.com/
  * Description:       Complete portfolio solution for Elementor — manage projects, categories, galleries, Dynamic Tags, and a Featured Portfolio Showcase widget with 5 customizable card styles.
- * Version:           1.0.1
+ * Version:           1.0.2
  * Requires at least: 6.0
  * Requires PHP:      7.4
  * Requires Plugins:  elementor

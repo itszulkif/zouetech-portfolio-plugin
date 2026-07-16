@@ -180,6 +180,17 @@ class Zouetech_Portfolio_Featured_Showcase_Styles {
 					(string) filemtime( $js_file ),
 					true
 				);
+
+				if ( 'card-style-2' === $slug ) {
+					wp_localize_script(
+						self::get_script_handle( $slug ),
+						'ztpFsS2',
+						array(
+							'ajaxUrl' => admin_url( 'admin-ajax.php' ),
+							'nonce'   => wp_create_nonce( 'ztp_fs_s2' ),
+						)
+					);
+				}
 			}
 		}
 	}

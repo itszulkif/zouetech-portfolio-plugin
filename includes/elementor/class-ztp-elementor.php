@@ -24,6 +24,9 @@ class Zouetech_Portfolio_Elementor {
 		add_action( 'elementor/widgets/register', array( $this, 'register_widgets' ) );
 		add_action( 'elementor/widgets/widgets_registered', array( $this, 'register_widgets' ) ); // Older API.
 
+		require_once ZTP_PLUGIN_DIR . 'includes/elementor/widgets/featured-showcase/class-ztp-featured-showcase-ajax.php';
+		Zouetech_Portfolio_Featured_Showcase_Ajax::register();
+
 		$tags = new Zouetech_Portfolio_Elementor_Dynamic_Tags();
 		$tags->register_hooks();
 	}

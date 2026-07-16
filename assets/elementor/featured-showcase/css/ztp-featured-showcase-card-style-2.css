@@ -1,40 +1,282 @@
 /**
- * Featured Portfolio Showcase — Card Style 2 placeholders.
+ * Featured Portfolio Showcase — Card Style 2
+ *
+ * Split card: rounded image + category badge, gray content panel below.
  *
  * @package Zouetech_Portfolio
  */
 
-.ztp-fs--card-style-2 .ztp-fs__featured {
+.ztp-fs--card-style-2 {
+	--ztp-fs-cols-d: 3;
+	--ztp-fs-cols-t: 2;
+	--ztp-fs-cols-m: 1;
+	--ztp-fs-s2-gap: 18px;
+	--ztp-fs-s2-body-bg: #f2f2f2;
+	--ztp-fs-s2-badge-bg: #111111;
+	--ztp-fs-s2-badge-color: #ffffff;
+	--ztp-fs-s2-btn-bg: #111111;
+	--ztp-fs-s2-btn-color: #ffffff;
+	--ztp-fs-s2-btn-radius: 999px;
+}
+
+/* Grid — uses shared column CSS variables from widget Style tab */
+.ztp-fs--card-style-2 .ztp-fs__cards--s2 {
+	display: grid;
+	grid-template-columns: repeat(var(--ztp-fs-cols-d), minmax(0, 1fr));
+	gap: clamp(20px, 2.8vw, 36px);
+}
+
+.ztp-fs--card-style-2 .ztp-fs__card--s2 {
+	display: flex;
+	flex-direction: column;
+	gap: 0;
+	padding: 0;
+	margin: 0;
+	min-width: 0;
+	background: transparent !important;
+	border: 0;
+	box-shadow: none !important;
+	transform: none;
+}
+
+.ztp-fs--card-style-2 .ztp-fs__card--s2:hover,
+.ztp-fs--card-style-2 .ztp-fs__card--s2:focus-within {
+	background: transparent !important;
+	box-shadow: none !important;
+	transform: none;
+}
+
+/* Image block */
+.ztp-fs--card-style-2 .ztp-fs__card-media--s2 {
+	position: relative;
+	display: block;
+	width: 100%;
+	margin-bottom: var(--ztp-fs-s2-gap);
+	border-radius: var(--ztp-fs-radius, 20px);
+	overflow: hidden;
+	background: #e8e8e8;
+}
+
+.ztp-fs--card-style-2 .ztp-fs__card-media-link {
+	display: block;
+	width: 100%;
+	aspect-ratio: 16 / 10;
+	height: auto;
+	text-decoration: none;
+}
+
+.ztp-fs--card-style-2 .ztp-fs__card-media-link img {
+	display: block;
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	transition: transform 500ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.ztp-fs--card-style-2 .ztp-fs__card--s2:hover .ztp-fs__card-media-link img {
+	transform: scale(1.04);
+}
+
+/* Category badge — top-left on image */
+.ztp-fs--card-style-2 .ztp-fs__card-badge {
+	position: absolute;
+	top: 16px;
+	left: 16px;
+	z-index: 5;
+	display: inline-flex;
 	align-items: center;
+	max-width: calc(100% - 32px);
+	padding: 0.45rem 0.9rem;
+	border-radius: 999px;
+	background: var(--ztp-fs-s2-badge-bg, #111111) !important;
+	color: var(--ztp-fs-s2-badge-color, #ffffff) !important;
+	font-size: 0.8125rem;
+	font-weight: 600;
+	line-height: 1.2;
+	letter-spacing: 0.01em;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+	text-decoration: none !important;
+	transition: opacity 200ms ease, transform 200ms ease;
 }
 
-.ztp-fs--card-style-2 .ztp-fs__featured-media--card {
-	box-shadow: 0 26px 60px rgba(17, 17, 17, 0.16);
+.ztp-fs--card-style-2 .ztp-fs__card-badge--inline {
+	position: static;
+	margin-bottom: var(--ztp-fs-s2-gap, 18px);
+	max-width: 100%;
 }
 
-.ztp-fs--card-style-2 .ztp-fs__featured-content--panel {
-	padding: clamp(22px, 3vw, 36px);
-	border-radius: var(--ztp-fs-radius);
-	background: linear-gradient(180deg, #ffffff 0%, #f6f3ff 100%);
-	box-shadow: 0 18px 48px rgba(17, 17, 17, 0.08);
+.ztp-fs--card-style-2 a.ztp-fs__card-badge:hover {
+	opacity: 0.92;
+	transform: translateY(-1px);
+	color: var(--ztp-fs-s2-badge-color, #ffffff) !important;
 }
 
-.ztp-fs--card-style-2 .ztp-fs__eyebrow {
-	font-size: 0.82rem;
+/* Content panel */
+.ztp-fs--card-style-2 .ztp-fs__card-body--s2 {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: 0.65rem;
+	flex: 1;
+	padding: clamp(18px, 2.5vw, 24px);
+	border-radius: var(--ztp-fs-radius, 20px);
+	background: var(--ztp-fs-s2-body-bg);
+}
+
+/* Auto-align View Details buttons across unequal card heights */
+.ztp-fs--card-style-2.is-btn-align .ztp-fs__card--s2 {
+	height: 100%;
+}
+
+.ztp-fs--card-style-2.is-btn-align .ztp-fs__card-btn {
+	margin-top: auto;
+}
+
+.ztp-fs--card-style-2 .ztp-fs__card-title {
+	margin: 0;
+	font-size: clamp(1.05rem, 1.4vw, 1.25rem);
 	font-weight: 700;
-	letter-spacing: 0.14em;
-	text-transform: uppercase;
-	color: #7c3aed;
+	line-height: 1.35;
+	color: #111111;
+	text-decoration: none;
 }
 
-.ztp-fs--card-style-2 .ztp-fs__cards--editorial .ztp-fs__card {
-	padding: 18px;
-	border-radius: var(--ztp-fs-radius);
-	background: #fff !important;
-	border: 1px solid rgba(17, 17, 17, 0.08);
+.ztp-fs--card-style-2 .ztp-fs__card-title a {
+	color: inherit;
+	text-decoration: none;
+	transition: opacity 200ms ease;
 }
 
-.ztp-fs--card-style-2 .ztp-fs__cards--editorial .ztp-fs__card:hover {
-	transform: translateY(-4px);
-	box-shadow: 0 18px 40px rgba(17, 17, 17, 0.1) !important;
+.ztp-fs--card-style-2 .ztp-fs__card-title a:hover {
+	opacity: 0.75;
+}
+
+.ztp-fs--card-style-2 .ztp-fs__card-excerpt {
+	margin: 0;
+	font-size: 0.9375rem;
+	line-height: 1.65;
+	color: #666666;
+}
+
+/* View Details button */
+.ztp-fs--card-style-2 .ztp-fs__card-btn {
+	display: inline-flex !important;
+	align-items: center;
+	justify-content: center;
+	margin-top: 0.35rem;
+	padding: 0.7rem 1.25rem;
+	border: 0 !important;
+	border-radius: var(--ztp-fs-s2-btn-radius, 999px);
+	background: var(--ztp-fs-s2-btn-bg, #111111) !important;
+	background-color: var(--ztp-fs-s2-btn-bg, #111111) !important;
+	color: var(--ztp-fs-s2-btn-color, #ffffff) !important;
+	font-size: 0.875rem;
+	font-weight: 600;
+	line-height: 1;
+	text-decoration: none !important;
+	box-shadow: none;
+	transition: opacity 200ms ease, transform 200ms ease;
+}
+
+.ztp-fs--card-style-2 .ztp-fs__card-btn:hover,
+.ztp-fs--card-style-2 .ztp-fs__card-btn:focus,
+.ztp-fs--card-style-2 .ztp-fs__card-btn:active {
+	opacity: 0.9;
+	transform: translateY(-1px);
+	background: var(--ztp-fs-s2-btn-bg, #111111) !important;
+	background-color: var(--ztp-fs-s2-btn-bg, #111111) !important;
+	color: var(--ztp-fs-s2-btn-color, #ffffff) !important;
+	text-decoration: none !important;
+}
+
+.ztp-fs--card-style-2 .ztp-fs__card-btn:focus-visible {
+	outline: 2px solid #111;
+	outline-offset: 3px;
+}
+
+/* Pagination */
+.ztp-fs--card-style-2 .ztp-fs__pagination {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: center;
+	gap: 10px;
+	margin-top: clamp(28px, 4vw, 48px);
+}
+
+.ztp-fs--card-style-2 .ztp-fs__page-btn,
+.ztp-fs--card-style-2 .ztp-fs__load-more {
+	appearance: none;
+	border: 1px solid rgba(17, 17, 17, 0.15);
+	background: #111111;
+	color: #ffffff;
+	font-size: 0.875rem;
+	font-weight: 600;
+	line-height: 1;
+	padding: 0.75rem 1.1rem;
+	border-radius: 999px;
+	cursor: pointer;
+	transition: opacity 180ms ease, transform 180ms ease, background-color 180ms ease;
+}
+
+.ztp-fs--card-style-2 .ztp-fs__page-btn {
+	min-width: 42px;
+	background: #ffffff;
+	color: #111111;
+}
+
+.ztp-fs--card-style-2 .ztp-fs__page-btn.is-active,
+.ztp-fs--card-style-2 .ztp-fs__page-btn:hover {
+	background: #111111;
+	color: #ffffff;
+	border-color: #111111;
+}
+
+.ztp-fs--card-style-2 .ztp-fs__load-more:hover {
+	opacity: 0.9;
+	transform: translateY(-1px);
+}
+
+.ztp-fs--card-style-2 .ztp-fs__loading {
+	font-size: 0.9rem;
+	color: #666666;
+}
+
+.ztp-fs--card-style-2.is-loading .ztp-fs__cards--s2 {
+	opacity: 0.65;
+	pointer-events: none;
+	transition: opacity 200ms ease;
+}
+
+.ztp-fs--card-style-2 .ztp-fs__infinite-sentinel {
+	width: 100%;
+	height: 1px;
+}
+
+/* Responsive columns */
+@media (max-width: 1024px) {
+	.ztp-fs--card-style-2 .ztp-fs__cards--s2 {
+		grid-template-columns: repeat(var(--ztp-fs-cols-t), minmax(0, 1fr));
+	}
+}
+
+@media (max-width: 767px) {
+	.ztp-fs--card-style-2 .ztp-fs__cards--s2 {
+		grid-template-columns: repeat(var(--ztp-fs-cols-m), minmax(0, 1fr));
+		gap: 28px;
+	}
+
+	.ztp-fs--card-style-2 .ztp-fs__card-badge {
+		top: 12px;
+		left: 12px;
+		font-size: 0.75rem;
+		padding: 0.35rem 0.75rem;
+	}
+
+	.ztp-fs--card-style-2 .ztp-fs__card-btn {
+		width: 100%;
+	}
 }

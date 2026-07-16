@@ -58,9 +58,18 @@ class Zouetech_Portfolio_Widget_Featured_Showcase extends \Elementor\Widget_Base
 	 * @return array<int, string>
 	 */
 	public function get_style_depends() {
-		// Base stylesheet only. Per-style CSS is enqueued in render() because
-		// Elementor may call get_style_depends() before widget settings exist.
-		return array( 'ztp-featured-showcase' );
+		// Load base + all card-style sheets here (not in render) so Elementor
+		// preview and frontend print them in <head> before content.
+		$deps = array( 'ztp-featured-showcase' );
+
+		foreach ( array_keys( Zouetech_Portfolio_Featured_Showcase_Styles::get_options() ) as $slug ) {
+			$handle = Zouetech_Portfolio_Featured_Showcase_Styles::get_style_handle( $slug );
+			if ( wp_style_is( $handle, 'registered' ) ) {
+				$deps[] = $handle;
+			}
+		}
+
+		return $deps;
 	}
 
 	/**
@@ -68,11 +77,20 @@ class Zouetech_Portfolio_Widget_Featured_Showcase extends \Elementor\Widget_Base
 	 * @return array<int, string>
 	 */
 	public function get_script_depends() {
-		return array( 'ztp-featured-showcase' );
+		$deps = array( 'ztp-featured-showcase' );
+
+		foreach ( array_keys( Zouetech_Portfolio_Featured_Showcase_Styles::get_options() ) as $slug ) {
+			$handle = Zouetech_Portfolio_Featured_Showcase_Styles::get_script_handle( $slug );
+			if ( wp_script_is( $handle, 'registered' ) ) {
+				$deps[] = $handle;
+			}
+		}
+
+		return $deps;
 	}
 
 	/**
-	 * Enqueue assets for the selected card style.
+	 * Enqueue optional per-style JS for the selected card style.
 	 *
 	 * @since 1.0.0
 	 * @param array<string, mixed> $settings Widget settings.
@@ -82,11 +100,6 @@ class Zouetech_Portfolio_Widget_Featured_Showcase extends \Elementor\Widget_Base
 		$slug = Zouetech_Portfolio_Featured_Showcase_Styles::sanitize(
 			isset( $settings['showcase_style'] ) ? $settings['showcase_style'] : Zouetech_Portfolio_Featured_Showcase_Styles::DEFAULT
 		);
-
-		$style_handle = Zouetech_Portfolio_Featured_Showcase_Styles::get_style_handle( $slug );
-		if ( wp_style_is( $style_handle, 'registered' ) ) {
-			wp_enqueue_style( $style_handle );
-		}
 
 		$script_handle = Zouetech_Portfolio_Featured_Showcase_Styles::get_script_handle( $slug );
 		if ( wp_script_is( $script_handle, 'registered' ) ) {
@@ -428,7 +441,10 @@ class Zouetech_Portfolio_Widget_Featured_Showcase extends \Elementor\Widget_Base
 			'show_gallery',
 			array_merge(
 				$switcher,
-				array( 'label' => __( 'Show Gallery', 'zouetech-portfolio' ) )
+				array(
+					'label'     => __( 'Show Gallery', 'zouetech-portfolio' ),
+					'condition' => array( 'showcase_style' => 'card-style-1' ),
+				)
 			)
 		);
 
@@ -457,10 +473,115 @@ class Zouetech_Portfolio_Widget_Featured_Showcase extends \Elementor\Widget_Base
 		);
 
 		$this->add_control(
+			's2_excerpt_length',
+			array(
+				'label'       => __( 'Excerpt Length (words)', 'zouetech-portfolio' ),
+				'type'        => \Elementor\Controls_Manager::NUMBER,
+				'default'     => 20,
+				'min'         => 5,
+				'max'         => 100,
+				'condition'   => array(
+					'showcase_style' => 'card-style-2',
+					'show_excerpt'   => 'yes',
+				),
+			)
+		);
+
+		$this->add_control(
+			's2_apply_excerpt_to_custom',
+			array_merge(
+				$switcher,
+				array(
+					'label'       => __( 'Apply Length to Custom Excerpt', 'zouetech-portfolio' ),
+					'description' => __( 'If Yes, also trim manually written excerpts to the length above.', 'zouetech-portfolio' ),
+					'default'     => '',
+					'condition'   => array(
+						'showcase_style' => 'card-style-2',
+						'show_excerpt'   => 'yes',
+					),
+				)
+			)
+		);
+
+		$this->add_control(
+			'show_view_details',
+			array_merge(
+				$switcher,
+				array(
+					'label'     => __( 'Show View Details Button', 'zouetech-portfolio' ),
+					'default'   => 'yes',
+					'condition' => array( 'showcase_style' => 'card-style-2' ),
+				)
+			)
+		);
+
+		$this->add_control(
+			'view_details_label',
+			array(
+				'label'       => __( 'View Details Label', 'zouetech-portfolio' ),
+				'type'        => \Elementor\Controls_Manager::TEXT,
+				'default'     => __( 'View Details', 'zouetech-portfolio' ),
+				'placeholder' => __( 'View Details', 'zouetech-portfolio' ),
+				'condition'   => array(
+					'showcase_style'    => 'card-style-2',
+					'show_view_details' => 'yes',
+				),
+			)
+		);
+
+		$this->add_control(
+			's2_align_button',
+			array_merge(
+				$switcher,
+				array(
+					'label'       => __( 'Auto Align Buttons', 'zouetech-portfolio' ),
+					'description' => __( 'Keeps View Details buttons aligned at the bottom of every card.', 'zouetech-portfolio' ),
+					'default'     => 'yes',
+					'condition'   => array(
+						'showcase_style'    => 'card-style-2',
+						'show_view_details' => 'yes',
+					),
+				)
+			)
+		);
+
+		$this->add_control(
+			's2_pagination_type',
+			array(
+				'label'     => __( 'Pagination Type', 'zouetech-portfolio' ),
+				'type'      => \Elementor\Controls_Manager::SELECT,
+				'default'   => 'none',
+				'options'   => array(
+					'none'      => __( 'None', 'zouetech-portfolio' ),
+					'numbers'   => __( 'Numbers', 'zouetech-portfolio' ),
+					'load_more' => __( 'Load More (Click)', 'zouetech-portfolio' ),
+					'infinite'  => __( 'Infinite Scroll', 'zouetech-portfolio' ),
+				),
+				'condition' => array( 'showcase_style' => 'card-style-2' ),
+			)
+		);
+
+		$this->add_control(
+			's2_load_more_label',
+			array(
+				'label'     => __( 'Load More Label', 'zouetech-portfolio' ),
+				'type'      => \Elementor\Controls_Manager::TEXT,
+				'default'   => __( 'Load More', 'zouetech-portfolio' ),
+				'condition' => array(
+					'showcase_style'     => 'card-style-2',
+					's2_pagination_type' => 'load_more',
+				),
+			)
+		);
+
+		$this->add_control(
 			'show_nav',
 			array_merge(
 				$switcher,
-				array( 'label' => __( 'Show Navigation Buttons', 'zouetech-portfolio' ) )
+				array(
+					'label'     => __( 'Show Navigation Buttons', 'zouetech-portfolio' ),
+					'condition' => array( 'showcase_style' => 'card-style-1' ),
+				)
 			)
 		);
 
@@ -468,7 +589,10 @@ class Zouetech_Portfolio_Widget_Featured_Showcase extends \Elementor\Widget_Base
 			'show_bottom_cards',
 			array_merge(
 				$switcher,
-				array( 'label' => __( 'Show Bottom Cards', 'zouetech-portfolio' ) )
+				array(
+					'label'     => __( 'Show Bottom Cards', 'zouetech-portfolio' ),
+					'condition' => array( 'showcase_style' => 'card-style-1' ),
+				)
 			)
 		);
 
@@ -481,7 +605,10 @@ class Zouetech_Portfolio_Widget_Featured_Showcase extends \Elementor\Widget_Base
 				'default'     => 0,
 				'min'         => 0,
 				'max'         => 40,
-				'condition'   => array( 'show_gallery' => 'yes' ),
+				'condition'   => array(
+					'showcase_style' => 'card-style-1',
+					'show_gallery'   => 'yes',
+				),
 			)
 		);
 
@@ -506,7 +633,10 @@ class Zouetech_Portfolio_Widget_Featured_Showcase extends \Elementor\Widget_Base
 				'label'     => __( 'Back Button Label', 'zouetech-portfolio' ),
 				'type'      => \Elementor\Controls_Manager::TEXT,
 				'default'   => __( '← Back', 'zouetech-portfolio' ),
-				'condition' => array( 'show_nav' => 'yes' ),
+				'condition' => array(
+					'showcase_style' => 'card-style-1',
+					'show_nav'       => 'yes',
+				),
 			)
 		);
 
@@ -516,7 +646,10 @@ class Zouetech_Portfolio_Widget_Featured_Showcase extends \Elementor\Widget_Base
 				'label'     => __( 'Next Button Label', 'zouetech-portfolio' ),
 				'type'      => \Elementor\Controls_Manager::TEXT,
 				'default'   => __( 'Next →', 'zouetech-portfolio' ),
-				'condition' => array( 'show_nav' => 'yes' ),
+				'condition' => array(
+					'showcase_style' => 'card-style-1',
+					'show_nav'       => 'yes',
+				),
 			)
 		);
 
@@ -524,22 +657,36 @@ class Zouetech_Portfolio_Widget_Featured_Showcase extends \Elementor\Widget_Base
 	}
 
 	/**
-	 * Style tab controls.
+	 * Style tab controls — isolated per selected card style.
 	 *
 	 * @since 1.0.0
 	 * @return void
 	 */
 	private function register_style_controls() {
+		$this->register_style1_controls();
+		$this->register_style2_controls();
+	}
+
+	/**
+	 * Style 1 only: layout, typography, colors, navigation.
+	 *
+	 * @since 1.0.1
+	 * @return void
+	 */
+	private function register_style1_controls() {
+		$is_s1 = array( 'showcase_style' => 'card-style-1' );
+
 		$this->start_controls_section(
-			'section_style_layout',
+			'section_s1_layout',
 			array(
-				'label' => __( 'Layout', 'zouetech-portfolio' ),
-				'tab'   => \Elementor\Controls_Manager::TAB_STYLE,
+				'label'     => __( 'Style 1 — Layout', 'zouetech-portfolio' ),
+				'tab'       => \Elementor\Controls_Manager::TAB_STYLE,
+				'condition' => $is_s1,
 			)
 		);
 
 		$this->add_control(
-			'columns_desktop',
+			's1_columns_desktop',
 			array(
 				'label'     => __( 'Desktop Columns (Cards)', 'zouetech-portfolio' ),
 				'type'      => \Elementor\Controls_Manager::NUMBER,
@@ -547,13 +694,13 @@ class Zouetech_Portfolio_Widget_Featured_Showcase extends \Elementor\Widget_Base
 				'min'       => 1,
 				'max'       => 4,
 				'selectors' => array(
-					'{{WRAPPER}} .ztp-fs' => '--ztp-fs-cols-d: {{VALUE}};',
+					'{{WRAPPER}} .ztp-fs--card-style-1' => '--ztp-fs-cols-d: {{VALUE}};',
 				),
 			)
 		);
 
 		$this->add_control(
-			'columns_tablet',
+			's1_columns_tablet',
 			array(
 				'label'     => __( 'Tablet Columns', 'zouetech-portfolio' ),
 				'type'      => \Elementor\Controls_Manager::NUMBER,
@@ -561,13 +708,13 @@ class Zouetech_Portfolio_Widget_Featured_Showcase extends \Elementor\Widget_Base
 				'min'       => 1,
 				'max'       => 3,
 				'selectors' => array(
-					'{{WRAPPER}} .ztp-fs' => '--ztp-fs-cols-t: {{VALUE}};',
+					'{{WRAPPER}} .ztp-fs--card-style-1' => '--ztp-fs-cols-t: {{VALUE}};',
 				),
 			)
 		);
 
 		$this->add_control(
-			'columns_mobile',
+			's1_columns_mobile',
 			array(
 				'label'     => __( 'Mobile Columns', 'zouetech-portfolio' ),
 				'type'      => \Elementor\Controls_Manager::NUMBER,
@@ -575,13 +722,13 @@ class Zouetech_Portfolio_Widget_Featured_Showcase extends \Elementor\Widget_Base
 				'min'       => 1,
 				'max'       => 2,
 				'selectors' => array(
-					'{{WRAPPER}} .ztp-fs' => '--ztp-fs-cols-m: {{VALUE}};',
+					'{{WRAPPER}} .ztp-fs--card-style-1' => '--ztp-fs-cols-m: {{VALUE}};',
 				),
 			)
 		);
 
 		$this->add_responsive_control(
-			'featured_image_height',
+			's1_featured_image_height',
 			array(
 				'label'      => __( 'Featured Image Height', 'zouetech-portfolio' ),
 				'type'       => \Elementor\Controls_Manager::SLIDER,
@@ -592,13 +739,13 @@ class Zouetech_Portfolio_Widget_Featured_Showcase extends \Elementor\Widget_Base
 				),
 				'default'    => array( 'unit' => 'px', 'size' => 420 ),
 				'selectors'  => array(
-					'{{WRAPPER}} .ztp-fs__featured-media' => 'height: {{SIZE}}{{UNIT}} !important;',
+					'{{WRAPPER}} .ztp-fs--card-style-1 .ztp-fs__featured-media' => 'height: {{SIZE}}{{UNIT}} !important;',
 				),
 			)
 		);
 
 		$this->add_responsive_control(
-			'card_image_height',
+			's1_card_image_height',
 			array(
 				'label'      => __( 'Card Image Height', 'zouetech-portfolio' ),
 				'type'       => \Elementor\Controls_Manager::SLIDER,
@@ -606,13 +753,13 @@ class Zouetech_Portfolio_Widget_Featured_Showcase extends \Elementor\Widget_Base
 				'range'      => array( 'px' => array( 'min' => 100, 'max' => 400 ) ),
 				'default'    => array( 'unit' => 'px', 'size' => 200 ),
 				'selectors'  => array(
-					'{{WRAPPER}} .ztp-fs__card-media' => 'height: {{SIZE}}{{UNIT}} !important;',
+					'{{WRAPPER}} .ztp-fs--card-style-1 .ztp-fs__card-media' => 'height: {{SIZE}}{{UNIT}} !important;',
 				),
 			)
 		);
 
 		$this->add_control(
-			'border_radius',
+			's1_border_radius',
 			array(
 				'label'      => __( 'Border Radius', 'zouetech-portfolio' ),
 				'type'       => \Elementor\Controls_Manager::SLIDER,
@@ -620,16 +767,16 @@ class Zouetech_Portfolio_Widget_Featured_Showcase extends \Elementor\Widget_Base
 				'range'      => array( 'px' => array( 'min' => 0, 'max' => 40 ) ),
 				'default'    => array( 'unit' => 'px', 'size' => 18 ),
 				'selectors'  => array(
-					'{{WRAPPER}} .ztp-fs'                  => '--ztp-fs-radius: {{SIZE}}{{UNIT}};',
-					'{{WRAPPER}} .ztp-fs__featured-media'  => 'border-radius: {{SIZE}}{{UNIT}};',
-					'{{WRAPPER}} .ztp-fs__card-media'      => 'border-radius: {{SIZE}}{{UNIT}};',
-					'{{WRAPPER}} .ztp-fs__thumb'           => 'border-radius: calc({{SIZE}}{{UNIT}} * 0.55);',
+					'{{WRAPPER}} .ztp-fs--card-style-1'                 => '--ztp-fs-radius: {{SIZE}}{{UNIT}};',
+					'{{WRAPPER}} .ztp-fs--card-style-1 .ztp-fs__featured-media' => 'border-radius: {{SIZE}}{{UNIT}};',
+					'{{WRAPPER}} .ztp-fs--card-style-1 .ztp-fs__card-media'     => 'border-radius: {{SIZE}}{{UNIT}};',
+					'{{WRAPPER}} .ztp-fs--card-style-1 .ztp-fs__thumb'          => 'border-radius: calc({{SIZE}}{{UNIT}} * 0.55);',
 				),
 			)
 		);
 
 		$this->add_control(
-			'animation_duration',
+			's1_animation_duration',
 			array(
 				'label'     => __( 'Animation Duration (ms)', 'zouetech-portfolio' ),
 				'type'      => \Elementor\Controls_Manager::NUMBER,
@@ -637,13 +784,13 @@ class Zouetech_Portfolio_Widget_Featured_Showcase extends \Elementor\Widget_Base
 				'min'       => 200,
 				'max'       => 1200,
 				'selectors' => array(
-					'{{WRAPPER}} .ztp-fs' => '--ztp-fs-duration: {{VALUE}}ms;',
+					'{{WRAPPER}} .ztp-fs--card-style-1' => '--ztp-fs-duration: {{VALUE}}ms;',
 				),
 			)
 		);
 
 		$this->add_responsive_control(
-			'section_gap',
+			's1_section_gap',
 			array(
 				'label'      => __( 'Section Spacing', 'zouetech-portfolio' ),
 				'type'       => \Elementor\Controls_Manager::SLIDER,
@@ -651,7 +798,7 @@ class Zouetech_Portfolio_Widget_Featured_Showcase extends \Elementor\Widget_Base
 				'range'      => array( 'px' => array( 'min' => 16, 'max' => 80 ) ),
 				'default'    => array( 'unit' => 'px', 'size' => 40 ),
 				'selectors'  => array(
-					'{{WRAPPER}} .ztp-fs' => '--ztp-fs-gap: {{SIZE}}{{UNIT}};',
+					'{{WRAPPER}} .ztp-fs--card-style-1' => '--ztp-fs-gap: {{SIZE}}{{UNIT}};',
 				),
 			)
 		);
@@ -659,47 +806,48 @@ class Zouetech_Portfolio_Widget_Featured_Showcase extends \Elementor\Widget_Base
 		$this->end_controls_section();
 
 		$this->start_controls_section(
-			'section_style_typo',
+			'section_s1_typo',
 			array(
-				'label' => __( 'Typography & Colors', 'zouetech-portfolio' ),
-				'tab'   => \Elementor\Controls_Manager::TAB_STYLE,
+				'label'     => __( 'Style 1 — Typography & Colors', 'zouetech-portfolio' ),
+				'tab'       => \Elementor\Controls_Manager::TAB_STYLE,
+				'condition' => $is_s1,
 			)
 		);
 
 		$this->add_control(
-			'title_color',
+			's1_title_color',
 			array(
 				'label'     => __( 'Title Color', 'zouetech-portfolio' ),
 				'type'      => \Elementor\Controls_Manager::COLOR,
 				'default'   => '#111111',
 				'selectors' => array(
-					'{{WRAPPER}} .ztp-fs__title' => 'color: {{VALUE}};',
-					'{{WRAPPER}} .ztp-fs__card-title' => 'color: {{VALUE}};',
+					'{{WRAPPER}} .ztp-fs--card-style-1 .ztp-fs__title'      => 'color: {{VALUE}};',
+					'{{WRAPPER}} .ztp-fs--card-style-1 .ztp-fs__card-title' => 'color: {{VALUE}};',
 				),
 			)
 		);
 
 		$this->add_control(
-			'meta_color',
+			's1_meta_color',
 			array(
 				'label'     => __( 'Category Color', 'zouetech-portfolio' ),
 				'type'      => \Elementor\Controls_Manager::COLOR,
 				'default'   => '#8a8a8a',
 				'selectors' => array(
-					'{{WRAPPER}} .ztp-fs__category' => 'color: {{VALUE}};',
-					'{{WRAPPER}} .ztp-fs__card-category' => 'color: {{VALUE}};',
+					'{{WRAPPER}} .ztp-fs--card-style-1 .ztp-fs__category'      => 'color: {{VALUE}};',
+					'{{WRAPPER}} .ztp-fs--card-style-1 .ztp-fs__card-category' => 'color: {{VALUE}};',
 				),
 			)
 		);
 
 		$this->add_control(
-			'excerpt_color',
+			's1_excerpt_color',
 			array(
 				'label'     => __( 'Description Color', 'zouetech-portfolio' ),
 				'type'      => \Elementor\Controls_Manager::COLOR,
 				'default'   => '#4a4a4a',
 				'selectors' => array(
-					'{{WRAPPER}} .ztp-fs__excerpt' => 'color: {{VALUE}};',
+					'{{WRAPPER}} .ztp-fs--card-style-1 .ztp-fs__excerpt' => 'color: {{VALUE}};',
 				),
 			)
 		);
@@ -707,57 +855,58 @@ class Zouetech_Portfolio_Widget_Featured_Showcase extends \Elementor\Widget_Base
 		$this->add_group_control(
 			\Elementor\Group_Control_Typography::get_type(),
 			array(
-				'name'     => 'title_typo',
+				'name'     => 's1_title_typo',
 				'label'    => __( 'Title Typography', 'zouetech-portfolio' ),
-				'selector' => '{{WRAPPER}} .ztp-fs__title',
+				'selector' => '{{WRAPPER}} .ztp-fs--card-style-1 .ztp-fs__title, {{WRAPPER}} .ztp-fs--card-style-1 .ztp-fs__card-title',
 			)
 		);
 
 		$this->add_group_control(
 			\Elementor\Group_Control_Typography::get_type(),
 			array(
-				'name'     => 'excerpt_typo',
+				'name'     => 's1_excerpt_typo',
 				'label'    => __( 'Description Typography', 'zouetech-portfolio' ),
-				'selector' => '{{WRAPPER}} .ztp-fs__excerpt',
+				'selector' => '{{WRAPPER}} .ztp-fs--card-style-1 .ztp-fs__excerpt',
 			)
 		);
 
 		$this->end_controls_section();
 
 		$this->start_controls_section(
-			'section_style_nav',
+			'section_s1_nav',
 			array(
-				'label' => __( 'Navigation Buttons', 'zouetech-portfolio' ),
-				'tab'   => \Elementor\Controls_Manager::TAB_STYLE,
+				'label'     => __( 'Style 1 — Navigation Buttons', 'zouetech-portfolio' ),
+				'tab'       => \Elementor\Controls_Manager::TAB_STYLE,
+				'condition' => $is_s1,
 			)
 		);
 
 		$this->add_control(
-			'nav_bg',
+			's1_nav_bg',
 			array(
 				'label'     => __( 'Background', 'zouetech-portfolio' ),
 				'type'      => \Elementor\Controls_Manager::COLOR,
 				'default'   => '#111111',
 				'selectors' => array(
-					'{{WRAPPER}} .ztp-fs__nav-btn' => 'background-color: {{VALUE}};',
+					'{{WRAPPER}} .ztp-fs--card-style-1 .ztp-fs__nav-btn' => 'background-color: {{VALUE}};',
 				),
 			)
 		);
 
 		$this->add_control(
-			'nav_color',
+			's1_nav_color',
 			array(
 				'label'     => __( 'Text Color', 'zouetech-portfolio' ),
 				'type'      => \Elementor\Controls_Manager::COLOR,
 				'default'   => '#ffffff',
 				'selectors' => array(
-					'{{WRAPPER}} .ztp-fs__nav-btn' => 'color: {{VALUE}};',
+					'{{WRAPPER}} .ztp-fs--card-style-1 .ztp-fs__nav-btn' => 'color: {{VALUE}};',
 				),
 			)
 		);
 
 		$this->add_control(
-			'nav_radius',
+			's1_nav_radius',
 			array(
 				'label'      => __( 'Button Radius', 'zouetech-portfolio' ),
 				'type'       => \Elementor\Controls_Manager::SLIDER,
@@ -765,7 +914,7 @@ class Zouetech_Portfolio_Widget_Featured_Showcase extends \Elementor\Widget_Base
 				'range'      => array( 'px' => array( 'min' => 0, 'max' => 40 ) ),
 				'default'    => array( 'unit' => 'px', 'size' => 999 ),
 				'selectors'  => array(
-					'{{WRAPPER}} .ztp-fs__nav-btn' => 'border-radius: {{SIZE}}{{UNIT}};',
+					'{{WRAPPER}} .ztp-fs--card-style-1 .ztp-fs__nav-btn' => 'border-radius: {{SIZE}}{{UNIT}};',
 				),
 			)
 		);
@@ -773,9 +922,302 @@ class Zouetech_Portfolio_Widget_Featured_Showcase extends \Elementor\Widget_Base
 		$this->add_group_control(
 			\Elementor\Group_Control_Box_Shadow::get_type(),
 			array(
-				'name'     => 'card_shadow',
-				'label'    => __( 'Card Shadow', 'zouetech-portfolio' ),
-				'selector' => '{{WRAPPER}} .ztp-fs__card:hover',
+				'name'     => 's1_card_shadow',
+				'label'    => __( 'Card Hover Shadow', 'zouetech-portfolio' ),
+				'selector' => '{{WRAPPER}} .ztp-fs--card-style-1 .ztp-fs__card:hover',
+			)
+		);
+
+		$this->end_controls_section();
+	}
+
+	/**
+	 * Style 2 only: layout, typography, colors, button.
+	 *
+	 * @since 1.0.1
+	 * @return void
+	 */
+	private function register_style2_controls() {
+		$is_s2 = array( 'showcase_style' => 'card-style-2' );
+
+		$this->start_controls_section(
+			'section_s2_layout',
+			array(
+				'label'     => __( 'Style 2 — Layout', 'zouetech-portfolio' ),
+				'tab'       => \Elementor\Controls_Manager::TAB_STYLE,
+				'condition' => $is_s2,
+			)
+		);
+
+		$this->add_control(
+			's2_columns_desktop',
+			array(
+				'label'       => __( 'Cards Per Row (Desktop)', 'zouetech-portfolio' ),
+				'description' => __( 'How many cards to show in one row on desktop.', 'zouetech-portfolio' ),
+				'type'        => \Elementor\Controls_Manager::SELECT,
+				'default'     => '3',
+				'options'     => array(
+					'3' => __( '3 Cards', 'zouetech-portfolio' ),
+					'4' => __( '4 Cards', 'zouetech-portfolio' ),
+					'5' => __( '5 Cards', 'zouetech-portfolio' ),
+				),
+				'selectors'   => array(
+					'{{WRAPPER}} .ztp-fs--card-style-2' => '--ztp-fs-cols-d: {{VALUE}};',
+				),
+			)
+		);
+
+		$this->add_control(
+			's2_columns_tablet',
+			array(
+				'label'     => __( 'Cards Per Row (Tablet)', 'zouetech-portfolio' ),
+				'type'      => \Elementor\Controls_Manager::SELECT,
+				'default'   => '2',
+				'options'   => array(
+					'1' => __( '1 Card', 'zouetech-portfolio' ),
+					'2' => __( '2 Cards', 'zouetech-portfolio' ),
+					'3' => __( '3 Cards', 'zouetech-portfolio' ),
+				),
+				'selectors' => array(
+					'{{WRAPPER}} .ztp-fs--card-style-2' => '--ztp-fs-cols-t: {{VALUE}};',
+				),
+			)
+		);
+
+		$this->add_control(
+			's2_columns_mobile',
+			array(
+				'label'     => __( 'Cards Per Row (Mobile)', 'zouetech-portfolio' ),
+				'type'      => \Elementor\Controls_Manager::SELECT,
+				'default'   => '1',
+				'options'   => array(
+					'1' => __( '1 Card', 'zouetech-portfolio' ),
+					'2' => __( '2 Cards', 'zouetech-portfolio' ),
+				),
+				'selectors' => array(
+					'{{WRAPPER}} .ztp-fs--card-style-2' => '--ztp-fs-cols-m: {{VALUE}};',
+				),
+			)
+		);
+
+		$this->add_responsive_control(
+			's2_card_image_height',
+			array(
+				'label'      => __( 'Card Image Height', 'zouetech-portfolio' ),
+				'type'       => \Elementor\Controls_Manager::SLIDER,
+				'size_units' => array( 'px' ),
+				'range'      => array( 'px' => array( 'min' => 120, 'max' => 480 ) ),
+				'default'    => array( 'unit' => 'px', 'size' => 220 ),
+				'selectors'  => array(
+					'{{WRAPPER}} .ztp-fs--card-style-2 .ztp-fs__card-media-link' => 'height: {{SIZE}}{{UNIT}} !important; aspect-ratio: auto;',
+				),
+			)
+		);
+
+		$this->add_control(
+			's2_border_radius',
+			array(
+				'label'      => __( 'Border Radius', 'zouetech-portfolio' ),
+				'type'       => \Elementor\Controls_Manager::SLIDER,
+				'size_units' => array( 'px' ),
+				'range'      => array( 'px' => array( 'min' => 0, 'max' => 40 ) ),
+				'default'    => array( 'unit' => 'px', 'size' => 20 ),
+				'selectors'  => array(
+					'{{WRAPPER}} .ztp-fs--card-style-2'                    => '--ztp-fs-radius: {{SIZE}}{{UNIT}};',
+					'{{WRAPPER}} .ztp-fs--card-style-2 .ztp-fs__card-media--s2' => 'border-radius: {{SIZE}}{{UNIT}};',
+					'{{WRAPPER}} .ztp-fs--card-style-2 .ztp-fs__card-body--s2'  => 'border-radius: {{SIZE}}{{UNIT}};',
+				),
+			)
+		);
+
+		$this->add_responsive_control(
+			's2_grid_gap',
+			array(
+				'label'      => __( 'Grid Gap', 'zouetech-portfolio' ),
+				'type'       => \Elementor\Controls_Manager::SLIDER,
+				'size_units' => array( 'px' ),
+				'range'      => array( 'px' => array( 'min' => 12, 'max' => 60 ) ),
+				'default'    => array( 'unit' => 'px', 'size' => 32 ),
+				'selectors'  => array(
+					'{{WRAPPER}} .ztp-fs--card-style-2 .ztp-fs__cards--s2' => 'gap: {{SIZE}}{{UNIT}};',
+				),
+			)
+		);
+
+		$this->add_responsive_control(
+			's2_card_gap',
+			array(
+				'label'      => __( 'Image to Content Gap', 'zouetech-portfolio' ),
+				'type'       => \Elementor\Controls_Manager::SLIDER,
+				'size_units' => array( 'px' ),
+				'range'      => array( 'px' => array( 'min' => 8, 'max' => 40 ) ),
+				'default'    => array( 'unit' => 'px', 'size' => 18 ),
+				'selectors'  => array(
+					'{{WRAPPER}} .ztp-fs--card-style-2' => '--ztp-fs-s2-gap: {{SIZE}}{{UNIT}};',
+				),
+			)
+		);
+
+		$this->end_controls_section();
+
+		$this->start_controls_section(
+			'section_s2_typo',
+			array(
+				'label'     => __( 'Style 2 — Typography & Colors', 'zouetech-portfolio' ),
+				'tab'       => \Elementor\Controls_Manager::TAB_STYLE,
+				'condition' => $is_s2,
+			)
+		);
+
+		$this->add_control(
+			's2_title_color',
+			array(
+				'label'     => __( 'Title Color', 'zouetech-portfolio' ),
+				'type'      => \Elementor\Controls_Manager::COLOR,
+				'default'   => '#111111',
+				'selectors' => array(
+					'{{WRAPPER}} .ztp-fs--card-style-2 .ztp-fs__card-title'   => 'color: {{VALUE}};',
+					'{{WRAPPER}} .ztp-fs--card-style-2 .ztp-fs__card-title a' => 'color: {{VALUE}};',
+				),
+			)
+		);
+
+		$this->add_control(
+			's2_excerpt_color',
+			array(
+				'label'     => __( 'Description Color', 'zouetech-portfolio' ),
+				'type'      => \Elementor\Controls_Manager::COLOR,
+				'default'   => '#666666',
+				'selectors' => array(
+					'{{WRAPPER}} .ztp-fs--card-style-2 .ztp-fs__card-excerpt' => 'color: {{VALUE}};',
+				),
+			)
+		);
+
+		$this->add_control(
+			's2_panel_bg',
+			array(
+				'label'     => __( 'Content Panel Background', 'zouetech-portfolio' ),
+				'type'      => \Elementor\Controls_Manager::COLOR,
+				'default'   => '#f2f2f2',
+				'selectors' => array(
+					'{{WRAPPER}} .ztp-fs--card-style-2' => '--ztp-fs-s2-body-bg: {{VALUE}};',
+				),
+			)
+		);
+
+		$this->add_control(
+			's2_badge_bg',
+			array(
+				'label'     => __( 'Category Badge Background', 'zouetech-portfolio' ),
+				'type'      => \Elementor\Controls_Manager::COLOR,
+				'default'   => '#111111',
+				'selectors' => array(
+					'{{WRAPPER}} .ztp-fs--card-style-2 .ztp-fs__card-badge' => 'background-color: {{VALUE}} !important; background: {{VALUE}} !important;',
+				),
+			)
+		);
+
+		$this->add_control(
+			's2_badge_color',
+			array(
+				'label'     => __( 'Category Badge Text', 'zouetech-portfolio' ),
+				'type'      => \Elementor\Controls_Manager::COLOR,
+				'default'   => '#ffffff',
+				'selectors' => array(
+					'{{WRAPPER}} .ztp-fs--card-style-2 .ztp-fs__card-badge'       => 'color: {{VALUE}} !important;',
+					'{{WRAPPER}} .ztp-fs--card-style-2 .ztp-fs__card-badge:hover' => 'color: {{VALUE}} !important;',
+				),
+			)
+		);
+
+		$this->add_group_control(
+			\Elementor\Group_Control_Typography::get_type(),
+			array(
+				'name'     => 's2_title_typo',
+				'label'    => __( 'Title Typography', 'zouetech-portfolio' ),
+				'selector' => '{{WRAPPER}} .ztp-fs--card-style-2 .ztp-fs__card-title, {{WRAPPER}} .ztp-fs--card-style-2 .ztp-fs__card-title a',
+			)
+		);
+
+		$this->add_group_control(
+			\Elementor\Group_Control_Typography::get_type(),
+			array(
+				'name'     => 's2_excerpt_typo',
+				'label'    => __( 'Description Typography', 'zouetech-portfolio' ),
+				'selector' => '{{WRAPPER}} .ztp-fs--card-style-2 .ztp-fs__card-excerpt',
+			)
+		);
+
+		$this->add_group_control(
+			\Elementor\Group_Control_Typography::get_type(),
+			array(
+				'name'     => 's2_badge_typo',
+				'label'    => __( 'Badge Typography', 'zouetech-portfolio' ),
+				'selector' => '{{WRAPPER}} .ztp-fs--card-style-2 .ztp-fs__card-badge',
+			)
+		);
+
+		$this->end_controls_section();
+
+		$this->start_controls_section(
+			'section_s2_button',
+			array(
+				'label'     => __( 'Style 2 — View Details Button', 'zouetech-portfolio' ),
+				'tab'       => \Elementor\Controls_Manager::TAB_STYLE,
+				'condition' => array(
+					'showcase_style'    => 'card-style-2',
+					'show_view_details' => 'yes',
+				),
+			)
+		);
+
+		$this->add_control(
+			's2_btn_bg',
+			array(
+				'label'     => __( 'Background', 'zouetech-portfolio' ),
+				'type'      => \Elementor\Controls_Manager::COLOR,
+				'default'   => '#111111',
+				'selectors' => array(
+					'{{WRAPPER}} .ztp-fs--card-style-2 .ztp-fs__card-btn' => 'background-color: {{VALUE}} !important; background: {{VALUE}} !important;',
+				),
+			)
+		);
+
+		$this->add_control(
+			's2_btn_color',
+			array(
+				'label'     => __( 'Text Color', 'zouetech-portfolio' ),
+				'type'      => \Elementor\Controls_Manager::COLOR,
+				'default'   => '#ffffff',
+				'selectors' => array(
+					'{{WRAPPER}} .ztp-fs--card-style-2 .ztp-fs__card-btn'       => 'color: {{VALUE}} !important;',
+					'{{WRAPPER}} .ztp-fs--card-style-2 .ztp-fs__card-btn:hover' => 'color: {{VALUE}} !important;',
+					'{{WRAPPER}} .ztp-fs--card-style-2 .ztp-fs__card-btn:focus' => 'color: {{VALUE}} !important;',
+				),
+			)
+		);
+
+		$this->add_control(
+			's2_btn_radius',
+			array(
+				'label'      => __( 'Button Radius', 'zouetech-portfolio' ),
+				'type'       => \Elementor\Controls_Manager::SLIDER,
+				'size_units' => array( 'px' ),
+				'range'      => array( 'px' => array( 'min' => 0, 'max' => 40 ) ),
+				'default'    => array( 'unit' => 'px', 'size' => 999 ),
+				'selectors'  => array(
+					'{{WRAPPER}} .ztp-fs--card-style-2 .ztp-fs__card-btn' => 'border-radius: {{SIZE}}{{UNIT}} !important;',
+				),
+			)
+		);
+
+		$this->add_group_control(
+			\Elementor\Group_Control_Typography::get_type(),
+			array(
+				'name'     => 's2_btn_typo',
+				'label'    => __( 'Button Typography', 'zouetech-portfolio' ),
+				'selector' => '{{WRAPPER}} .ztp-fs--card-style-2 .ztp-fs__card-btn',
 			)
 		);
 
@@ -791,11 +1233,17 @@ class Zouetech_Portfolio_Widget_Featured_Showcase extends \Elementor\Widget_Base
 	protected function render() {
 		$settings = $this->get_settings_for_display();
 		$this->enqueue_selected_style_assets( $settings );
+
+		// Ensure Style 2 query can calculate max pages when pagination is on.
+		if ( empty( $settings['paged'] ) ) {
+			$settings['paged'] = 1;
+		}
+
 		$queryer  = new Zouetech_Portfolio_Featured_Showcase_Query();
 		$query    = $queryer->query( $settings );
 		$projects = $queryer->normalize( $query, $settings );
 
 		$renderer = new Zouetech_Portfolio_Featured_Showcase_Renderer();
-		$renderer->render( $projects, $settings );
+		$renderer->render( $projects, $settings, $query );
 	}
 }

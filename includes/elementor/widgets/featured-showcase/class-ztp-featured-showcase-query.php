@@ -68,6 +68,11 @@ class Zouetech_Portfolio_Featured_Showcase_Query {
 			$posts_per_page = 8;
 		}
 
+		$paged = isset( $settings['paged'] ) ? absint( $settings['paged'] ) : 1;
+		if ( $paged < 1 ) {
+			$paged = 1;
+		}
+
 		$orderby = isset( $settings['orderby'] ) ? sanitize_key( $settings['orderby'] ) : 'date';
 		$order   = isset( $settings['order'] ) ? strtoupper( sanitize_text_field( $settings['order'] ) ) : 'DESC';
 		if ( ! in_array( $order, array( 'ASC', 'DESC' ), true ) ) {
@@ -81,13 +86,23 @@ class Zouetech_Portfolio_Featured_Showcase_Query {
 
 		$post_type = self::get_post_type( $settings );
 
+		$need_pages = ! empty( $settings['s2_pagination_type'] )
+			&& 'none' !== $settings['s2_pagination_type']
+			&& 'card-style-2' === ( isset( $settings['showcase_style'] ) ? $settings['showcase_style'] : '' );
+
+		// Also enable pages when AJAX sends paged > 1.
+		if ( $paged > 1 ) {
+			$need_pages = true;
+		}
+
 		$args = array(
 			'post_type'              => $post_type,
 			'post_status'            => 'publish',
 			'posts_per_page'         => $posts_per_page,
+			'paged'                  => $paged,
 			'orderby'                => $orderby,
 			'order'                  => $order,
-			'no_found_rows'          => true,
+			'no_found_rows'          => ! $need_pages,
 			'ignore_sticky_posts'    => true,
 			'update_post_meta_cache' => true,
 			'update_post_term_cache' => true,
@@ -199,6 +214,10 @@ class Zouetech_Portfolio_Featured_Showcase_Query {
 			$cat_url = '';
 			if ( $taxonomy ) {
 				$terms = get_the_terms( $post_id, $taxonomy );
+				if ( ( ! is_array( $terms ) || empty( $terms ) || is_wp_error( $terms ) ) && Zouetech_Portfolio_CPT::POST_TYPE === $post_type ) {
+					// Fallback to portfolio category if selected taxonomy has no terms.
+					$terms = get_the_terms( $post_id, Zouetech_Portfolio_Category::TAXONOMY );
+				}
 				if ( is_array( $terms ) && ! empty( $terms ) && ! is_wp_error( $terms ) ) {
 					$cat       = $terms[0]->name;
 					$term_link = get_term_link( $terms[0] );
@@ -206,9 +225,26 @@ class Zouetech_Portfolio_Featured_Showcase_Query {
 				}
 			}
 
-			$excerpt = has_excerpt( $post_id )
-				? get_the_excerpt( $post_id )
-				: wp_trim_words( wp_strip_all_tags( $post->post_content ), 28, '…' );
+			$excerpt_length = isset( $settings['s2_excerpt_length'] ) ? absint( $settings['s2_excerpt_length'] ) : 20;
+			if ( $excerpt_length < 1 ) {
+				$excerpt_length = 20;
+			}
+
+			$apply_to_custom = ! empty( $settings['s2_apply_excerpt_to_custom'] ) && 'yes' === $settings['s2_apply_excerpt_to_custom'];
+			$is_style_2      = isset( $settings['showcase_style'] ) && 'card-style-2' === $settings['showcase_style'];
+
+			if ( has_excerpt( $post_id ) ) {
+				$excerpt = get_the_excerpt( $post_id );
+				if ( $is_style_2 && $apply_to_custom ) {
+					$excerpt = wp_trim_words( wp_strip_all_tags( $excerpt ), $excerpt_length, '…' );
+				} elseif ( $is_style_2 ) {
+					// Keep custom excerpt as-is unless apply toggle is on.
+					$excerpt = wp_strip_all_tags( $excerpt );
+				}
+			} else {
+				$words   = $is_style_2 ? $excerpt_length : 28;
+				$excerpt = wp_trim_words( wp_strip_all_tags( $post->post_content ), $words, '…' );
+			}
 
 			$main_url = $thumb_url;
 			$main_id  = $thumb_id;
