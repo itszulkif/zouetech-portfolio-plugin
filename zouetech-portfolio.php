@@ -1,11 +1,19 @@
 <?php
-/*
+/**
  * Plugin Name:       Zouetech Portfolio
- * Description:       A dynamic portfolio showcase plugin with multiple card styles.
+ * Plugin URI:        https://zouetech.com/
+ * Description:       Complete portfolio solution for Elementor — manage projects, categories, galleries, Dynamic Tags, and a Featured Portfolio Showcase widget with 5 customizable card styles.
  * Version:           1.0.1
- * Author:            Zouetech Team
- * GitHub Plugin URI: itszulkif/zouetech-portfolio-plugin
- * Primary Branch:    main
+ * Requires at least: 6.0
+ * Requires PHP:      7.4
+ * Requires Plugins:  elementor
+ * Author:             Zouetech
+ * Author URI:         https://zouetech.com/
+ * License:            GPL-2.0-or-later
+ * License URI:        https://www.gnu.org/licenses/gpl-2.0.html
+ * Text Domain:        zouetech-portfolio
+ * GitHub Plugin URI:  itszulkif/zouetech-portfolio-plugin
+ * Primary Branch:     main
  */
 
 defined( 'ABSPATH' ) || exit;
@@ -13,7 +21,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Current plugin version.
  */
-define( 'ZTP_VERSION', '1.0.0' );
+define( 'ZTP_VERSION', '1.0.1' );
 
 /**
  * Plugin root file.
@@ -92,3 +100,8 @@ add_action(
 		ztp_run_plugin();
 	}
 );
+
+if ( is_admin() ) {
+	require_once ZTP_PLUGIN_DIR . 'includes/class-ztp-github-updater.php';
+	new Zouetech_Portfolio_GitHub_Updater( ZTP_PLUGIN_FILE, 'itszulkif/zouetech-portfolio-plugin' );
+}

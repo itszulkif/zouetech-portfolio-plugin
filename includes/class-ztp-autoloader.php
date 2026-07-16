@@ -41,6 +41,7 @@ class Zouetech_Portfolio_Autoloader {
 		'Zouetech_Portfolio_Elementor_Dynamic_Tags' => 'includes/elementor/class-ztp-elementor-dynamic-tags.php',
 		'Zouetech_Portfolio_Elementor'              => 'includes/elementor/class-ztp-elementor.php',
 		'Zouetech_Portfolio_Featured_Showcase_Styles' => 'includes/elementor/widgets/featured-showcase/class-ztp-featured-showcase-styles.php',
+		'Zouetech_Portfolio_GitHub_Updater'         => 'includes/class-ztp-github-updater.php',
 		'Zouetech_Portfolio_Admin'                  => 'admin/class-ztp-admin.php',
 		'Zouetech_Portfolio_Meta_Boxes'             => 'admin/class-ztp-meta-boxes.php',
 		'Zouetech_Portfolio_Admin_Columns'          => 'admin/class-ztp-admin-columns.php',
