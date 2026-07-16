@@ -2,7 +2,7 @@
 /*
  * Plugin Name:       Zouetech Portfolio
  * Description:       A dynamic portfolio showcase plugin with multiple card styles.
- * Version:           1.0.0
+ * Version:           1.0.1
  * Author:            Zouetech Team
  * GitHub Plugin URI: itszulkif/zouetech-portfolio-plugin
  * Primary Branch:    main
